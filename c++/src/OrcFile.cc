@@ -42,6 +42,7 @@ namespace orc {
     std::string filename;
     int file;
     uint64_t totalLength;
+    uint64_t totalBytesRead;
 
   public:
     FileInputStream(std::string _filename) {
@@ -55,6 +56,7 @@ namespace orc {
         throw ParseError("Can't stat " + filename);
       }
       totalLength = static_cast<uint64_t>(fileStat.st_size);
+      totalBytesRead = 0;
     }
 
     ~FileInputStream() override;
@@ -81,6 +83,12 @@ namespace orc {
       if (static_cast<uint64_t>(bytesRead) != length) {
         throw ParseError("Short read of " + filename);
       }
+
+      totalBytesRead += static_cast<uint64_t>(bytesRead);
+    }
+
+    uint64_t getBytesRead() override{
+        return totalBytesRead;
     }
 
     const std::string& getName() const override {

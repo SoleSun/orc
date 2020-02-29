@@ -61,6 +61,11 @@ namespace orc {
                       uint64_t offset) = 0;
 
     /**
+     * Retrieve the number of bytes read from the file 
+     */
+    virtual uint64_t getBytesRead() = 0;
+
+    /**
      * Get the name of the stream for error messages.
      */
     virtual const std::string& getName() const = 0;
