@@ -56,6 +56,10 @@ namespace orc {
       return buffer;
     }
 
+    virtual uint64_t getBytesRead() const override {
+        return 0;
+    }
+
   private:
     const char * buffer;
     uint64_t size, naturalReadSize;

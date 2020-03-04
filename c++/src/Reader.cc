@@ -1089,6 +1089,69 @@ namespace orc {
   }
 
   std::unique_ptr<Reader> createReader(std::unique_ptr<InputStream> stream,
+                                       const ReaderOptions& options,
+                                       uint64_t *bytes_read_out) {
+    std::shared_ptr<FileContents> contents = std::shared_ptr<FileContents>(new FileContents());
+    contents->pool = options.getMemoryPool();
+    contents->errorStream = options.getErrorStream();
+    std::string serializedFooter = options.getSerializedFileTail();
+    uint64_t fileLength;
+    uint64_t postscriptLength;
+    if (serializedFooter.length() != 0) {
+      // Parse the file tail from the serialized one.
+      proto::FileTail tail;
+      if (!tail.ParseFromString(serializedFooter)) {
+        throw ParseError("Failed to parse the file tail from string");
+      }
+      contents->postscript.reset(new proto::PostScript(tail.postscript()));
+      contents->footer.reset(new proto::Footer(tail.footer()));
+      fileLength = tail.filelength();
+      postscriptLength = tail.postscriptlength();
+    } else {
+      // figure out the size of the file using the option or filesystem
+      fileLength = std::min(options.getTailLocation(),
+                            static_cast<uint64_t>(stream->getLength()));
+
+      //read last bytes into buffer to get PostScript
+      uint64_t readSize = std::min(fileLength, DIRECTORY_SIZE_GUESS);
+      if (readSize < 4) {
+        throw ParseError("File size too small");
+      }
+      std::unique_ptr<DataBuffer<char>> buffer( new DataBuffer<char>(*contents->pool, readSize) );
+      stream->read(buffer->data(), readSize, fileLength - readSize);
+
+      postscriptLength = buffer->data()[readSize - 1] & 0xff;
+      contents->postscript = REDUNDANT_MOVE(readPostscript(stream.get(),
+        buffer.get(), postscriptLength));
+      uint64_t footerSize = contents->postscript->footerlength();
+      uint64_t tailSize = 1 + postscriptLength + footerSize;
+      if (tailSize >= fileLength) {
+        std::stringstream msg;
+        msg << "Invalid ORC tailSize=" << tailSize << ", fileLength=" << fileLength;
+        throw ParseError(msg.str());
+      }
+      uint64_t footerOffset;
+
+      if (tailSize > readSize) {
+        buffer->resize(footerSize);
+        stream->read(buffer->data(), footerSize, fileLength - tailSize);
+        footerOffset = 0;
+      } else {
+        footerOffset = readSize - tailSize;
+      }
+
+      contents->footer = REDUNDANT_MOVE(readFooter(stream.get(), buffer.get(),
+        footerOffset, *contents->postscript,  *contents->pool));
+    }
+    *bytes_read_out = stream->getBytesRead();
+    contents->stream = std::move(stream);
+    return std::unique_ptr<Reader>(new ReaderImpl(std::move(contents),
+                                                  options,
+                                                  fileLength,
+                                                  postscriptLength));
+  }
+
+  std::unique_ptr<Reader> createReader(std::unique_ptr<InputStream> stream,
                                        const ReaderOptions& options) {
     std::shared_ptr<FileContents> contents = std::shared_ptr<FileContents>(new FileContents());
     contents->pool = options.getMemoryPool();

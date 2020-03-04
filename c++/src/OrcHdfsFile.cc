@@ -130,6 +130,10 @@ namespace orc {
       return totalLength;
     }
 
+    uint64_t getBytesReads() const override {
+        return 0;
+    }
+
     uint64_t getNaturalReadSize() const override {
       return READ_SIZE;
     }

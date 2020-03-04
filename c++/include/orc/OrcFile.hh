@@ -63,7 +63,7 @@ namespace orc {
     /**
      * Retrieve the number of bytes read from the file 
      */
-    virtual uint64_t getBytesRead() = 0;
+    virtual uint64_t getBytesRead() const = 0;
 
     /**
      * Get the name of the stream for error messages.
@@ -132,6 +132,14 @@ namespace orc {
    */
   ORC_UNIQUE_PTR<Reader> createReader(ORC_UNIQUE_PTR<InputStream> stream,
                                       const ReaderOptions& options);
+  /**
+   * Create a reader to read the ORC file.
+   * @param stream the stream to read
+   * @param options the options for reading the file
+   */
+  ORC_UNIQUE_PTR<Reader> createReader(ORC_UNIQUE_PTR<InputStream> stream,
+                                      const ReaderOptions& options,
+                                      uint64_t *bytes_read_out);
   /**
    * Create a stream to write to a local file.
    * @param path the name of the file in the local file system

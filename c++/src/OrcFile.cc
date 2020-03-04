@@ -87,7 +87,7 @@ namespace orc {
       totalBytesRead += static_cast<uint64_t>(bytesRead);
     }
 
-    uint64_t getBytesRead() override{
+    uint64_t getBytesRead() const override{
         return totalBytesRead;
     }
 
